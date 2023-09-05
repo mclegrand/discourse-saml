@@ -110,12 +110,16 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
     extra_data = auth.extra || {}
     attributes = extra_data[:raw_info] || OneLogin::RubySaml::Attributes.new
 
-    auth[:uid] = attributes.single("uid") || auth[:uid] if setting(:use_attributes_uid)
+    auth[:uid] = attributes.single("urn:oid:1.3.6.1.4.1.5923.1.1.1.6").split('@', 2).first
     uid = auth[:uid]
 
-    auth.info[:email] ||= uid if uid.to_s&.include?("@")
-
-    auth.info[:nickname] = uid.to_s if uid && setting(:use_attributes_uid)
+    auth.info[:email] ||= attributes.single("urn:oid:0.9.2342.19200300.100.1.3")
+    first_name = attributes.single("urn:oid:2.5.4.42")
+    last_name = attributes.single("urn:oid:2.5.4.4")
+    auth.info[:first_name] = first_name
+    auth.info[:last_name] = last_name
+    auth.info[:name] = first_name + " " + last_name
+    auth.info[:nickname] = first_name + " " + last_name
 
     auth.extra = { "raw_info" => attributes.attributes }
     result = super
@@ -126,7 +130,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
       ::PluginStore.set("saml", "#{name}_last_auth_extra", extra_data.inspect)
     end
 
-    if setting(:debug_auth)
+    if setting(:debug_auth) or true
       data = { uid: uid, info: info, attributes: attributes }
       log("#{name}_auth: #{data.inspect}")
     end
@@ -134,7 +138,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
     result.skip_email_validation = true if setting(:skip_email_validation)
 
     if result.user.blank?
-      result.username = "" if setting(:clear_username)
+      result.username = auth.info[:nickname]
       result.user = auto_create_account(result, uid) if setting(:auto_create_account) &&
         result.email_valid
     else
