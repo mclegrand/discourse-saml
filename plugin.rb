@@ -5,13 +5,17 @@
 # version: 1.0
 # author: Discourse Team
 # url: https://github.com/discourse/discourse-saml
-# transpile_js: true
 
 gem "macaddr", "1.0.0"
 gem "uuid", "2.3.7"
-gem "rexml", "3.2.6"
-gem "ruby-saml", "1.13.0"
-gem "omniauth-saml", "1.9.0"
+
+if OmniAuth.const_defined?(:AuthenticityTokenProtection) # OmniAuth 2.0
+  gem "ruby-saml", "1.16.0"
+  gem "omniauth-saml", "2.1.0"
+else
+  gem "ruby-saml", "1.13.0"
+  gem "omniauth-saml", "1.9.0"
+end
 
 enabled_site_setting :saml_enabled if !GlobalSetting.try("saml_target_url")
 
@@ -53,9 +57,17 @@ after_initialize do
   if !!GlobalSetting.try("saml_target_url")
     # Configured via environment variables. Hide all the site settings
     # from the UI to avoid confusion
+    saml_site_setting_keys = []
+
     SiteSetting.defaults.all.keys.each do |k|
       next if !k.to_s.start_with?("saml_")
-      SiteSetting.hidden_settings << k
+      saml_site_setting_keys << k
+    end
+
+    if SiteSetting.respond_to?(:hidden_settings_provider)
+      register_modifier(:hidden_site_settings) { |hidden| hidden + saml_site_setting_keys }
+    else
+      SiteSetting.hidden_settings.concat(saml_site_setting_keys)
     end
   end
 

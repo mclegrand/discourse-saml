@@ -149,6 +149,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
       sync_admin(user, attributes)
       sync_trust_level(user, attributes)
       sync_locale(user, attributes)
+      Group.refresh_automatic_groups!(:admins, :moderators, :staff)
     end
 
     result.overrides_username = setting(:omit_username)
@@ -179,6 +180,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
     sync_trust_level(user, attributes)
     sync_custom_fields(user, attributes, info)
     sync_locale(user, attributes)
+    Group.refresh_automatic_groups!(:admins, :moderators, :staff)
   end
 
   def auto_create_account(result, uid)
@@ -206,7 +208,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
   end
 
   def sync_groups(user, attributes, info)
-    return unless setting(:sync_groups).present?
+    return if setting(:sync_groups).blank?
 
     groups_fullsync = setting(:groups_fullsync)
     raw_group_list = attributes.multi(setting(:groups_attribute)) || []
@@ -356,7 +358,7 @@ class SamlAuthenticator < ::Auth::ManagedAuthenticator
   private
 
   def idp_cert_multi
-    return unless setting(:cert_multi).present?
+    return if setting(:cert_multi).blank?
 
     certificates = setting(:cert_multi).split("|")
     certificates.push(setting(:cert)) if setting(:cert).present?

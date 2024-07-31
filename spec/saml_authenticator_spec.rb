@@ -498,7 +498,10 @@ describe SamlAuthenticator do
       it "user should be a moderator (default param)" do
         hash = auth_hash("isModerator" => [1])
         result = @authenticator.after_authenticate(hash)
-        expect(result.user.moderator).to eq(true)
+        user = result.user
+
+        expect(user.moderator).to eq(true)
+        expect(user.groups.pluck(:name)).to include("moderators", "staff")
       end
 
       it "user should be a moderator (using specified saml_moderator_attribute)" do
@@ -515,7 +518,10 @@ describe SamlAuthenticator do
       it "user should be an admin (default param)" do
         hash = auth_hash("isAdmin" => [1])
         result = @authenticator.after_authenticate(hash)
-        expect(result.user.admin).to eq(true)
+        user = result.user
+
+        expect(user.admin).to eq(true)
+        expect(user.groups.pluck(:name)).to include("admins", "staff")
       end
 
       it "user should be an admin (using specified saml_admin_attribute)" do
@@ -532,8 +538,15 @@ describe SamlAuthenticator do
       it "user should have trust level 3 (default param)" do
         hash = auth_hash("trustLevel" => [3])
         result = @authenticator.after_authenticate(hash)
-        expect(result.user.trust_level).to eq(3)
-        expect(result.user.manual_locked_trust_level).to eq(3)
+        user = result.user
+
+        expect(user.trust_level).to eq(3)
+        expect(user.manual_locked_trust_level).to eq(3)
+        expect(user.groups.pluck(:name)).to include(
+          "trust_level_1",
+          "trust_level_2",
+          "trust_level_3",
+        )
       end
 
       it "user should have trust level 3 (using specified saml_trust_level_attribute)" do
